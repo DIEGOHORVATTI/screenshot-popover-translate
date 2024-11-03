@@ -40,12 +40,8 @@ export const App = () => {
   };
 
   const captureSelection = async () => {
-    const { x, y, width, height } = getSelectionDimensions();
     const canvas = await html2canvas(contentRef.current!, {
-      x,
-      y,
-      width,
-      height,
+      ...getSelectionDimensions(),
       scrollX: -window.scrollX,
       scrollY: -window.scrollY,
       useCORS: true
