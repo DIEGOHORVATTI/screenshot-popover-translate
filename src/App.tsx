@@ -23,33 +23,29 @@ export const App = () => {
     }
   }
 
-  const handleMouseMove = (event: React.MouseEvent) => {
+  const handleMouseMove = ({ clientX: x, clientY: y }: React.MouseEvent) => {
     if (selection.isSelecting && selection.startCoords) {
-      setSelection((prev) => ({
-        ...prev,
-        endCoords: { x: event.clientX, y: event.clientY },
-      }))
+      setSelection((prev) => ({ ...prev, endCoords: { x, y } }))
     }
   }
 
   const handleMouseUp = async () => {
     if (selection.isSelecting && selection.startCoords && selection.endCoords) {
       setSelection((prev) => ({ ...prev, isSelecting: false }))
-      await captureSelection()
+
+      const canvas = await html2canvas(contentRef.current!, {
+        ...getSelectionDimensions(),
+        scrollX: -window.scrollX,
+        scrollY: -window.scrollY,
+        useCORS: true,
+      })
+
+      const imgData = canvas.toDataURL('image/png')
+
+      const { data } = await Tesseract.recognize(imgData, 'eng')
+
+      console.log(data.text)
     }
-  }
-
-  const captureSelection = async () => {
-    const canvas = await html2canvas(contentRef.current!, {
-      ...getSelectionDimensions(),
-      scrollX: -window.scrollX,
-      scrollY: -window.scrollY,
-      useCORS: true,
-    })
-
-    const imgData = canvas.toDataURL('image/png')
-
-    await performTextRecognition(imgData)
   }
 
   const getSelectionDimensions = () => {
@@ -59,13 +55,6 @@ export const App = () => {
     const height = Math.abs(selection.startCoords!.y - selection.endCoords!.y)
 
     return { x, y, width, height }
-  }
-
-  const performTextRecognition = async (imgData: string) => {
-    const {
-      data: { text },
-    } = await Tesseract.recognize(imgData, 'eng')
-    console.log(text)
   }
 
   const getSelectionStyle = (): React.CSSProperties => {
