@@ -1,0 +1,9 @@
+.capture-area {
+  border: 1px dashed #ccc;
+}
+
+.selection-overlay {
+  background-color: rgba(0, 0, 255, 0.3);
+  border: 2px dashed #000;
+  pointer-events: none; /* Permite que o mouse interaja com a área abaixo */
+}

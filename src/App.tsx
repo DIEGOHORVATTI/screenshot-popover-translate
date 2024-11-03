@@ -1,173 +1,128 @@
-import { useRef, useState } from 'react';
+import React, { useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
 import Tesseract from 'tesseract.js';
 
-interface Selection {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-const Cropper = ({ children }: React.PropsWithChildren) => {
-  const [selection, setSelection] = useState<Selection | null>(null);
+export const App = () => {
   const [isSelecting, setIsSelecting] = useState(false);
-  const imageRef = useRef<HTMLDivElement | null>(null);
-  const startSelectionRef = useRef<{ startX: number; startY: number } | null>(
+  const [startCoords, setStartCoords] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const [endCoords, setEndCoords] = useState<{ x: number; y: number } | null>(
     null
   );
+  const selectionRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null); // Ref para o conteúdo a ser capturado
 
-  const handleMouseDown = (event: React.MouseEvent) => {
-    event.preventDefault();
-    setIsSelecting(true);
-
-    const imgRect = imageRef.current?.getBoundingClientRect();
-    if (imgRect) {
-      startSelectionRef.current = {
-        startX: event.clientX - imgRect.left,
-        startY: event.clientY - imgRect.top
-      };
-      setSelection(null);
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.altKey) {
+      e.preventDefault(); // Previne o comportamento padrão
+      setIsSelecting(true);
+      setStartCoords({ x: e.clientX, y: e.clientY });
+      setEndCoords(null);
     }
   };
 
-  const handleMouseMove = (event: React.MouseEvent) => {
-    if (!isSelecting || !startSelectionRef.current) return;
-
-    const { startX, startY } = startSelectionRef.current;
-    const imgRect = imageRef.current?.getBoundingClientRect();
-
-    if (imgRect) {
-      const currentX = event.clientX - imgRect.left;
-      const currentY = event.clientY - imgRect.top;
-
-      const newSelection = {
-        x: Math.min(startX, currentX),
-        y: Math.min(startY, currentY),
-        w: Math.abs(startX - currentX),
-        h: Math.abs(startY - currentY)
-      };
-
-      setSelection(newSelection);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isSelecting && startCoords) {
+      setEndCoords({ x: e.clientX, y: e.clientY });
     }
   };
 
-  const handleMouseUp = () => {
-    if (isSelecting) {
-      captureSelection();
-    }
-    setIsSelecting(false);
-  };
+  const handleMouseUp = async () => {
+    if (isSelecting && startCoords && endCoords) {
+      setIsSelecting(false);
 
-  const captureSelection = async () => {
-    if (selection) {
-      const croppedImage = await cropImage(selection);
+      // Capture the selection area
+      const x = Math.min(startCoords.x, endCoords.x);
+      const y = Math.min(startCoords.y, endCoords.y);
+      const width = Math.abs(startCoords.x - endCoords.x);
+      const height = Math.abs(startCoords.y - endCoords.y);
 
-      if (croppedImage) {
-        console.log(croppedImage);
-        const ocrResult = await performOCR(croppedImage);
+      // Use html2canvas on the window itself to capture the full view
+      const canvas = await html2canvas(contentRef.current!, {
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        scrollX: -window.scrollX,
+        scrollY: -window.scrollY,
+        useCORS: true
+      });
+      const imgData = canvas.toDataURL('image/png');
 
-        console.log(`OCR Result: ${ocrResult}`);
-      } else {
-        console.error('Erro ao cortar a imagem');
-      }
-    }
-  };
-
-  const cropImage = async (area: Selection): Promise<string> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-
-      if (!context) {
-        console.error('Erro ao obter o contexto do canvas');
-        resolve('');
-        return;
+      // Open the image in a new tab
+      const newTab = window.open();
+      if (newTab) {
+        newTab.document.body.innerHTML = `<img src="${imgData}" alt="Captured" style="width:100%"/>`;
       }
 
-      const img = imageRef.current?.querySelector('img');
-      if (!img) {
-        resolve('');
-        return;
-      }
-
-      canvas.width = area.w;
-      canvas.height = area.h;
-
-      context.drawImage(
-        img,
-        area.x,
-        area.y,
-        area.w,
-        area.h,
-        0,
-        0,
-        area.w,
-        area.h
-      );
-      resolve(canvas.toDataURL('image/png'));
-    });
+      // Perform text recognition
+      Tesseract.recognize(imgData, 'eng').then(({ data: { text } }) => {
+        console.log(text);
+      });
+    }
   };
 
-  const performOCR = async (image: string): Promise<string> => {
-    const {
-      data: { text }
-    } = await Tesseract.recognize(image, 'eng');
-    return text;
+  const getSelectionStyle = (): React.CSSProperties => {
+    if (!startCoords || !endCoords) return {};
+    const x = Math.min(startCoords.x, endCoords.x);
+    const y = Math.min(startCoords.y, endCoords.y);
+    const width = Math.abs(startCoords.x - endCoords.x);
+    const height = Math.abs(startCoords.y - endCoords.y);
+
+    return {
+      zIndex: 999,
+      position: 'absolute',
+      left: x,
+      top: y,
+      width,
+      height,
+      border: '2px dashed rgba(255, 0, 0, 0.5)',
+      backgroundColor: 'rgba(255, 0, 0, 0.2)',
+      pointerEvents: 'none'
+    };
   };
 
   return (
     <div
-      style={{
-        position: 'relative',
-        backgroundColor: '#4444',
-        cursor: isSelecting ? 'crosshair' : 'default'
-      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      onMouseLeave={() => {
-        if (isSelecting) handleMouseUp();
+      style={{
+        position: 'relative',
+        width: '100vw',
+        height: '100vh',
+        overflow: 'hidden',
+        backgroundColor: '#f0f0f0' // Fundo cinza
       }}
     >
-      {selection && <Overlay selection={selection} />}
-      <div ref={imageRef} style={{ position: 'relative' }}>
-        {children}
+      {isSelecting && <div style={getSelectionStyle()} ref={selectionRef} />}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: isSelecting
+            ? 'rgba(255, 255, 255, 0.5)'
+            : 'transparent',
+          pointerEvents: isSelecting ? 'auto' : 'none',
+          zIndex: 998
+        }}
+      />
+      <div
+        ref={contentRef}
+        style={{ position: 'absolute', width: '100%', height: '100%' }}
+      >
+        <h2>Selecione uma área da imagem para extrair o texto</h2>
+        <img
+          src="/tema-da-aula.webp"
+          alt="Tema da Aula"
+          style={{ width: '100%' }}
+        />
       </div>
     </div>
-  );
-};
-
-const Overlay = ({ selection }: { selection: Selection }) => {
-  return (
-    <div
-      style={{
-        zIndex: 1,
-        position: 'absolute',
-        left: selection.x,
-        top: selection.y,
-        width: selection.w,
-        height: selection.h,
-        border: '2px dashed rgba(255, 0, 0, 0.5)',
-        backgroundColor: 'rgba(255, 0, 0, 0.2)',
-        pointerEvents: 'none'
-      }}
-    />
-  );
-};
-
-// Componente principal para utilização
-export const App = () => {
-  return (
-    <Cropper>
-      <h1>ola mundo</h1>
-
-      <h2>Lorem ipsum dolor sit amet</h2>
-
-      <img
-        src="/tema-da-aula.webp" // Verifique se o caminho é correto
-        alt="Tema da Aula"
-        style={{ width: '100%' }} // Ajusta a imagem para ocupar a largura total
-      />
-    </Cropper>
   );
 };
