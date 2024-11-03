@@ -1,7 +1,10 @@
 import { useState, useRef } from 'react'
+import { useKeyPressEvent } from 'react-use'
+
 import html2canvas from 'html2canvas'
 import Tesseract from 'tesseract.js'
-import { useKeyPressEvent } from 'react-use'
+
+import axios from 'axios'
 
 export const App = () => {
   const [selection, setSelection] = useState<{
@@ -44,7 +47,18 @@ export const App = () => {
 
       const imgData = canvas.toDataURL('image/png')
       const { data } = await Tesseract.recognize(imgData, 'eng')
-      setRecognized(data)
+
+      const text = await axios
+        .post<string>('https://translate-google-api-v1.vercel.app/translate', {
+          text: data.text,
+          to: 'pt-BR',
+        })
+        .then(({ data }) => data)
+
+      setRecognized({
+        ...data,
+        text,
+      })
 
       console.log(data)
     }
@@ -133,7 +147,8 @@ export const App = () => {
       />
       <div ref={contentRef} style={{ position: 'absolute', width: '100%', height: '100%' }}>
         <h2>Selecione uma área da imagem para extrair o texto</h2>
-        <img src="/tema-da-aula.webp" alt="Tema da Aula" style={{ width: '100%' }} />
+
+        <img src="/tema-da-aula.png" alt="Tema da Aula" style={{ width: '100%' }} />
       </div>
     </div>
   )
