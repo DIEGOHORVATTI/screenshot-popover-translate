@@ -11,22 +11,23 @@ export const App = () => {
 
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.altKey) {
-      e.preventDefault();
+  const handleMouseDown = (event: React.MouseEvent) => {
+    if (event.altKey) {
+      event.preventDefault();
+
       setSelection({
         isSelecting: true,
-        startCoords: { x: e.clientX, y: e.clientY },
+        startCoords: { x: event.clientX, y: event.clientY },
         endCoords: null
       });
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (event: React.MouseEvent) => {
     if (selection.isSelecting && selection.startCoords) {
       setSelection((prev) => ({
         ...prev,
-        endCoords: { x: e.clientX, y: e.clientY }
+        endCoords: { x: event.clientX, y: event.clientY }
       }));
     }
   };
@@ -51,7 +52,7 @@ export const App = () => {
     });
 
     const imgData = canvas.toDataURL('image/png');
-    openImageInNewTab(imgData);
+
     await performTextRecognition(imgData);
   };
 
@@ -60,14 +61,8 @@ export const App = () => {
     const y = Math.min(selection.startCoords!.y, selection.endCoords!.y);
     const width = Math.abs(selection.startCoords!.x - selection.endCoords!.x);
     const height = Math.abs(selection.startCoords!.y - selection.endCoords!.y);
-    return { x, y, width, height };
-  };
 
-  const openImageInNewTab = (imgData: string) => {
-    const newTab = window.open();
-    if (newTab) {
-      newTab.document.body.innerHTML = `<img src="${imgData}" alt="Captured" style="width:100%"/>`;
-    }
+    return { x, y, width, height };
   };
 
   const performTextRecognition = async (imgData: string) => {
@@ -108,6 +103,7 @@ export const App = () => {
       }}
     >
       {selection.isSelecting && <div style={getSelectionStyle()} />}
+
       <div
         style={{
           position: 'absolute',
