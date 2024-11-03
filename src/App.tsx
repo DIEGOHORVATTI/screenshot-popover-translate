@@ -9,12 +9,12 @@ export const App = () => {
     endCoords: { x: number; y: number } | null
   }>({ isSelecting: false, startCoords: null, endCoords: null })
 
+  const [recognizedText, setRecognizedText] = useState<string | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   const handleMouseDown = (event: React.MouseEvent) => {
     if (event.altKey) {
       event.preventDefault()
-
       setSelection({
         isSelecting: true,
         startCoords: { x: event.clientX, y: event.clientY },
@@ -32,7 +32,6 @@ export const App = () => {
   const handleMouseUp = async () => {
     if (selection.isSelecting && selection.startCoords && selection.endCoords) {
       setSelection((prev) => ({ ...prev, isSelecting: false }))
-
       const canvas = await html2canvas(contentRef.current!, {
         ...getSelectionDimensions(),
         scrollX: -window.scrollX,
@@ -41,10 +40,8 @@ export const App = () => {
       })
 
       const imgData = canvas.toDataURL('image/png')
-
       const { data } = await Tesseract.recognize(imgData, 'eng')
-
-      console.log(data.text)
+      setRecognizedText(data.text)
     }
   }
 
@@ -74,6 +71,26 @@ export const App = () => {
     }
   }
 
+  const getPopoverStyle = (): React.CSSProperties => {
+    if (!selection.startCoords || !selection.endCoords) return {}
+    const { x, y, width, height } = getSelectionDimensions()
+
+    return {
+      position: 'absolute',
+      left: x,
+      top: y,
+      minWidth: width,
+      maxWidth: '300px',
+      minHeight: height,
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      border: '1px dashed black',
+      padding: '5px',
+      zIndex: 1000,
+      pointerEvents: 'none',
+      overflow: 'auto',
+    }
+  }
+
   return (
     <div
       onMouseDown={handleMouseDown}
@@ -88,6 +105,10 @@ export const App = () => {
       }}
     >
       {selection.isSelecting && <div style={getSelectionStyle()} />}
+
+      {!selection.isSelecting && recognizedText && (
+        <div style={getPopoverStyle()}>{recognizedText}</div>
+      )}
 
       <div
         style={{
