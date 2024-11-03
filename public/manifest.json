@@ -8,6 +8,14 @@
     "service_worker": "background.js",
     "type": "module"
   },
+  "commands": {
+    "activate-feature": {
+      "suggested_key": {
+        "default": "Alt+A"
+      },
+      "description": "Ativa a funcionalidade"
+    }
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "Hello World Popup",

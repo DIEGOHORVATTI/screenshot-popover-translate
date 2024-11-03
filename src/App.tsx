@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useKeyPressEvent } from 'react-use'
+import useKeyboardJs from 'react-use/lib/useKeyboardJs'
+
 import html2canvas from 'html2canvas'
 import Tesseract from 'tesseract.js'
 import axios from 'axios'
@@ -19,8 +21,10 @@ export const App = () => {
 
   const [recognized, setRecognized] = useState<Tesseract.Page | null>(null)
 
+  const [isPressedAltA] = useKeyboardJs('alt + a')
+
   const handleMouseDown = (event: React.MouseEvent) => {
-    if (event.altKey) {
+    if (isPressedAltA) {
       event.preventDefault()
       setSelection({
         isSelecting: true,

@@ -17,6 +17,9 @@
     "react-use": "^17.5.1",
     "tesseract.js": "^5.1.1"
   },
+  "peerDependencies": {
+    "keyboardjs": "^2.7.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.13.0",
     "@types/node": "^22.8.7",
