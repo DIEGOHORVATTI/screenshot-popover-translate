@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import Tesseract from 'tesseract.js'
+import { useKeyPressEvent } from 'react-use'
 
 export const App = () => {
   const [selection, setSelection] = useState<{
@@ -9,7 +10,7 @@ export const App = () => {
     endCoords: { x: number; y: number } | null
   }>({ isSelecting: false, startCoords: null, endCoords: null })
 
-  const [recognizedText, setRecognizedText] = useState<string | null>(null)
+  const [recognized, setRecognized] = useState<Tesseract.Page | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
 
   const handleMouseDown = (event: React.MouseEvent) => {
@@ -32,6 +33,8 @@ export const App = () => {
   const handleMouseUp = async () => {
     if (selection.isSelecting && selection.startCoords && selection.endCoords) {
       setSelection((prev) => ({ ...prev, isSelecting: false }))
+      setRecognized(null)
+
       const canvas = await html2canvas(contentRef.current!, {
         ...getSelectionDimensions(),
         scrollX: -window.scrollX,
@@ -41,7 +44,9 @@ export const App = () => {
 
       const imgData = canvas.toDataURL('image/png')
       const { data } = await Tesseract.recognize(imgData, 'eng')
-      setRecognizedText(data.text)
+      setRecognized(data)
+
+      console.log(data)
     }
   }
 
@@ -65,31 +70,37 @@ export const App = () => {
       top: y,
       width,
       height,
-      border: '2px dashed rgba(255, 0, 0, 0.5)',
-      backgroundColor: 'rgba(255, 0, 0, 0.2)',
+      border: '2px dashed black',
       pointerEvents: 'none',
     }
   }
 
   const getPopoverStyle = (): React.CSSProperties => {
-    if (!selection.startCoords || !selection.endCoords) return {}
     const { x, y, width, height } = getSelectionDimensions()
 
+    const halfFontSize = Number(recognized?.words[0]?.font_size) / 2
+
     return {
+      zIndex: 1000,
       position: 'absolute',
       left: x,
       top: y,
+      fontSize: halfFontSize,
+      fontWeight: 'bold',
       minWidth: width,
       maxWidth: '300px',
       minHeight: height,
+      borderRadius: 10,
       backgroundColor: 'rgba(255, 255, 255, 0.8)',
-      border: '1px dashed black',
-      padding: '5px',
-      zIndex: 1000,
+      padding: 10,
       pointerEvents: 'none',
       overflow: 'auto',
     }
   }
+
+  useKeyPressEvent('Escape', () =>
+    setSelection({ isSelecting: false, startCoords: null, endCoords: null })
+  )
 
   return (
     <div
@@ -101,13 +112,12 @@ export const App = () => {
         width: '100vw',
         height: '100vh',
         overflow: 'hidden',
-        backgroundColor: '#f0f0f0',
       }}
     >
       {selection.isSelecting && <div style={getSelectionStyle()} />}
 
-      {!selection.isSelecting && recognizedText && (
-        <div style={getPopoverStyle()}>{recognizedText}</div>
+      {!selection.isSelecting && recognized && selection.startCoords && selection.endCoords && (
+        <div style={getPopoverStyle()}>{recognized.text}</div>
       )}
 
       <div
@@ -117,7 +127,6 @@ export const App = () => {
           left: 0,
           width: '100%',
           height: '100%',
-          backgroundColor: selection.isSelecting ? 'rgba(255, 255, 255, 0.5)' : 'transparent',
           pointerEvents: selection.isSelecting ? 'auto' : 'none',
           zIndex: 998,
         }}
