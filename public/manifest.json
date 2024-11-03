@@ -4,6 +4,10 @@
   "version": "1.0.0.0",
   "description": "Hello World my very first extension",
   "manifest_version": 3,
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "index.html",
     "default_title": "Hello World Popup",
