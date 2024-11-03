@@ -1,20 +1,23 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useKeyPressEvent } from 'react-use'
-
 import html2canvas from 'html2canvas'
 import Tesseract from 'tesseract.js'
-
 import axios from 'axios'
 
+interface Selection {
+  isSelecting: boolean
+  startCoords: { x: number; y: number } | null
+  endCoords: { x: number; y: number } | null
+}
+
 export const App = () => {
-  const [selection, setSelection] = useState<{
-    isSelecting: boolean
-    startCoords: { x: number; y: number } | null
-    endCoords: { x: number; y: number } | null
-  }>({ isSelecting: false, startCoords: null, endCoords: null })
+  const [selection, setSelection] = useState<Selection>({
+    isSelecting: false,
+    startCoords: null,
+    endCoords: null,
+  })
 
   const [recognized, setRecognized] = useState<Tesseract.Page | null>(null)
-  const contentRef = useRef<HTMLDivElement | null>(null)
 
   const handleMouseDown = (event: React.MouseEvent) => {
     if (event.altKey) {
@@ -38,7 +41,7 @@ export const App = () => {
       setSelection((prev) => ({ ...prev, isSelecting: false }))
       setRecognized(null)
 
-      const canvas = await html2canvas(contentRef.current!, {
+      const canvas = await html2canvas(document.body, {
         ...getSelectionDimensions(),
         scrollX: -window.scrollX,
         scrollY: -window.scrollY,
@@ -46,9 +49,10 @@ export const App = () => {
       })
 
       const imgData = canvas.toDataURL('image/png')
+
       const { data } = await Tesseract.recognize(imgData, 'eng')
 
-      const text = await axios
+      const translatedText = await axios
         .post<string>('https://translate-google-api-v1.vercel.app/translate', {
           text: data.text,
           to: 'pt-BR',
@@ -57,10 +61,8 @@ export const App = () => {
 
       setRecognized({
         ...data,
-        text,
+        text: translatedText,
       })
-
-      console.log(data)
     }
   }
 
@@ -79,7 +81,7 @@ export const App = () => {
 
     return {
       zIndex: 999,
-      position: 'absolute',
+      position: 'fixed',
       left: x,
       top: y,
       width,
@@ -92,23 +94,28 @@ export const App = () => {
   const getPopoverStyle = (): React.CSSProperties => {
     const { x, y, width, height } = getSelectionDimensions()
 
-    const halfFontSize = Number(recognized?.words[0]?.font_size) / 2
+    const FONT_RATIO = 3
+
+    const fontSize = recognized?.words[0]?.font_size
+      ? (Number(recognized.words[0].font_size) / FONT_RATIO + width / FONT_RATIO) / FONT_RATIO -
+        FONT_RATIO
+      : 14
 
     return {
       zIndex: 1000,
       position: 'absolute',
       left: x,
       top: y,
-      fontSize: halfFontSize,
+      fontSize: fontSize,
       fontWeight: 'bold',
-      minWidth: width,
-      maxWidth: '300px',
+      maxWidth: width,
+      minWidth: 1,
       minHeight: height,
       borderRadius: 10,
       backgroundColor: 'rgba(255, 255, 255, 0.8)',
       padding: 10,
       pointerEvents: 'none',
-      overflow: 'auto',
+      overflowY: 'auto',
     }
   }
 
@@ -122,10 +129,12 @@ export const App = () => {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       style={{
-        position: 'relative',
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
+        position: 'fixed',
+        width: '100%',
+        height: '100%',
+        top: 0,
+        left: 0,
+        zIndex: 999,
       }}
     >
       {selection.isSelecting && <div style={getSelectionStyle()} />}
@@ -133,23 +142,6 @@ export const App = () => {
       {!selection.isSelecting && recognized && selection.startCoords && selection.endCoords && (
         <div style={getPopoverStyle()}>{recognized.text}</div>
       )}
-
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: selection.isSelecting ? 'auto' : 'none',
-          zIndex: 998,
-        }}
-      />
-      <div ref={contentRef} style={{ position: 'absolute', width: '100%', height: '100%' }}>
-        <h2>Selecione uma área da imagem para extrair o texto</h2>
-
-        <img src="/tema-da-aula.png" alt="Tema da Aula" style={{ width: '100%' }} />
-      </div>
     </div>
   )
 }

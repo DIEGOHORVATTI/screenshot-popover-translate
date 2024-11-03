@@ -5,13 +5,11 @@ import { App } from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
-
-    {/* 
     <div>
-      <h2>Selecione uma área da imagem para extrair o texto</h2>
-      <img src="/tema-da-aula.webp" alt="Tema da Aula" style={{ width: '100%' }} />
-    </div> 
-    */}
+      <App />
+
+      <h1>Selecione uma área da imagem para extrair o texto</h1>
+      <img src="/tema-da-aula.png" alt="Tema da Aula" style={{ width: '100%' }} />
+    </div>
   </StrictMode>
 )
