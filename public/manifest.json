@@ -1,0 +1,16 @@
+{
+  "name": "Popup Translator",
+  "short_name": "Popup Translator",
+  "version": "1.0.0.0",
+  "description": "Hello World my very first extension",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Hello World Popup",
+    "default_icon": {
+      "16": "logo.png",
+      "32": "logo.png",
+      "48": "logo.png"
+    }
+  }
+}
